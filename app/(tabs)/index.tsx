@@ -1,9 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { Alert, FlatList, Text, View } from "react-native";
 
-import { getTransactions } from "../../src/storage/transactionStorage";
+import {
+  deleteTransaction,
+  getTransactions,
+} from "../../src/storage/transactionStorage";
 import { Transaction } from "../../src/types/transaction";
 import { totals } from "../../src/utils/money";
 
@@ -58,7 +61,24 @@ export default function Home() {
       <FlatList
         data={items}
         keyExtractor={(x) => x.id}
-        renderItem={({ item }) => <TransactionItem item={item} />}
+        renderItem={({ item }) => (
+          <TransactionItem
+            item={item}
+            onLongPress={() => {
+              Alert.alert("Delete transaction?", "This cannot be undone.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    const next = await deleteTransaction(item.id);
+                    setItems(next);
+                  },
+                },
+              ]);
+            }}
+          />
+        )}
         ListEmptyComponent={
           <Text style={{ color: "#aaa" }}>No transactions yet.</Text>
         }

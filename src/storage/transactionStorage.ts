@@ -11,3 +11,10 @@ export async function getTransactions(): Promise<Transaction[]> {
 export async function saveTransactions(items: Transaction[]) {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
+
+export async function deleteTransaction(id: string) {
+  const items = await getTransactions();
+  const next = items.filter((t) => t.id !== id);
+  await saveTransactions(next);
+  return next;
+}

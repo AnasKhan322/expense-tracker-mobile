@@ -1,7 +1,15 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
+import CategoryGrid from "../src/components/categoryGrid";
 import {
   getTransactions,
   saveTransactions,
@@ -11,8 +19,8 @@ import { Transaction, TransactionType } from "../src/types/transaction";
 export default function Add() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("Food");
   const [type, setType] = useState<TransactionType>("expense");
+  const [category, setCategory] = useState("Food");
 
   const save = async () => {
     const parsed = Number(amount);
@@ -25,23 +33,35 @@ export default function Add() {
       id: Date.now().toString(),
       title: title.trim(),
       amount: parsed,
-      category: category.trim() || "Other",
+      category,
       type,
       date: new Date().toISOString(),
     };
 
     const existing = await getTransactions();
     await saveTransactions([newItem, ...existing]);
+
     router.dismiss();
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000", padding: 18, gap: 12 }}>
-      <Text style={{ color: "white", fontSize: 20, fontWeight: "800" }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#000" }}
+      contentContainerStyle={{ padding: 18, paddingBottom: 40 }}
+    >
+      <Text
+        style={{
+          color: "white",
+          fontSize: 20,
+          fontWeight: "800",
+          marginBottom: 12,
+        }}
+      >
         Add Transaction
       </Text>
 
-      <View style={{ flexDirection: "row", gap: 10 }}>
+      {/* Type Toggle */}
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
         <Pressable
           onPress={() => setType("expense")}
           style={{
@@ -75,7 +95,8 @@ export default function Add() {
         </Pressable>
       </View>
 
-      <Text style={{ color: "#aaa" }}>Title</Text>
+      {/* Title */}
+      <Text style={{ color: "#aaa", marginBottom: 6 }}>Title</Text>
       <TextInput
         value={title}
         onChangeText={setTitle}
@@ -84,12 +105,14 @@ export default function Add() {
           color: "white",
           padding: 12,
           borderRadius: 12,
+          marginBottom: 12,
         }}
         placeholder="e.g. Grocery"
         placeholderTextColor="#666"
       />
 
-      <Text style={{ color: "#aaa" }}>Amount</Text>
+      {/* Amount */}
+      <Text style={{ color: "#aaa", marginBottom: 6 }}>Amount</Text>
       <TextInput
         value={amount}
         onChangeText={setAmount}
@@ -99,32 +122,24 @@ export default function Add() {
           color: "white",
           padding: 12,
           borderRadius: 12,
+          marginBottom: 14,
         }}
         placeholder="e.g. 25.50"
         placeholderTextColor="#666"
       />
 
-      <Text style={{ color: "#aaa" }}>Category</Text>
-      <TextInput
-        value={category}
-        onChangeText={setCategory}
-        style={{
-          backgroundColor: "#111",
-          color: "white",
-          padding: 12,
-          borderRadius: 12,
-        }}
-        placeholder="e.g. Food"
-        placeholderTextColor="#666"
-      />
+      {/* Category grid */}
+      <Text style={{ color: "#aaa", marginBottom: 10 }}>Category</Text>
+      <CategoryGrid selected={category} onSelect={setCategory} />
 
+      {/* Save */}
       <Pressable
         onPress={save}
         style={{
           backgroundColor: "#9DFF3A",
           padding: 14,
           borderRadius: 12,
-          marginTop: 8,
+          marginTop: 18,
         }}
       >
         <Text style={{ textAlign: "center", fontWeight: "900", color: "#111" }}>
@@ -132,9 +147,12 @@ export default function Add() {
         </Text>
       </Pressable>
 
-      <Pressable onPress={() => router.dismiss()} style={{ padding: 12 }}>
+      <Pressable
+        onPress={() => router.dismiss()}
+        style={{ padding: 12, marginTop: 6 }}
+      >
         <Text style={{ color: "#aaa", textAlign: "center" }}>Cancel</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }

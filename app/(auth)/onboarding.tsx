@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { setHasOnboarded } from "../../src/storage/appStorage";
 
 export default function Onboarding() {
   return (
@@ -26,7 +27,10 @@ export default function Onboarding() {
       </Text>
 
       <Pressable
-        onPress={() => router.replace("/(tabs)")}
+        onPress={async () => {
+          await setHasOnboarded();
+          router.replace("/(tabs)");
+        }}
         style={{ backgroundColor: "#9DFF3A", padding: 14, borderRadius: 12 }}
       >
         <Text style={{ textAlign: "center", fontWeight: "700" }}>
