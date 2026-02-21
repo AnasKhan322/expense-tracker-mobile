@@ -1,15 +1,16 @@
 import { Text, View } from "react-native";
+
 export default function Profile() {
   return (
     <View
       style={{
         flex: 1,
+        backgroundColor: "#000",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#000",
       }}
     >
-      <Text style={{ color: "white" }}>Profile (coming soon)</Text>
+      <Text style={{ color: "white" }}>Profile</Text>
     </View>
   );
 }

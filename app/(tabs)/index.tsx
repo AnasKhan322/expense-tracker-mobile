@@ -1,7 +1,8 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
-import { Alert, FlatList, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   deleteTransaction,
@@ -29,62 +30,74 @@ export default function Home() {
     }, [load]),
   );
 
-  const t = totals(items);
+  const t = useMemo(() => totals(items), [items]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000", padding: 18 }}>
-      <Text style={{ color: "#888", marginBottom: 4 }}>Hello,</Text>
-      <Text
-        style={{
-          color: "white",
-          fontSize: 22,
-          fontWeight: "800",
-          marginBottom: 16,
-        }}
-      >
-        Your Finances
-      </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
+      <View style={{ flex: 1, padding: 18 }}>
+        <Text
+          style={{
+            color: "white",
+            fontSize: 22,
+            fontWeight: "900",
+            marginBottom: 16,
+          }}
+        >
+          Your Finances
+        </Text>
 
-      <BalanceCard balance={t.balance} income={t.income} expense={t.expense} />
-
-      <Text
-        style={{
-          color: "white",
-          fontSize: 16,
-          fontWeight: "800",
-          marginBottom: 10,
-        }}
-      >
-        Recent Transactions
-      </Text>
-
-      <FlatList
-        data={items}
-        keyExtractor={(x) => x.id}
-        renderItem={({ item }) => (
-          <TransactionItem
-            item={item}
-            onLongPress={() => {
-              Alert.alert("Delete transaction?", "This cannot be undone.", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: async () => {
-                    const next = await deleteTransaction(item.id);
-                    setItems(next);
-                  },
-                },
-              ]);
-            }}
+        {/* Balance card is tappable -> Overview donut */}
+        <Pressable onPress={() => router.push("/balance")}>
+          <BalanceCard
+            balance={t.balance}
+            income={t.income}
+            expense={t.expense}
           />
-        )}
-        ListEmptyComponent={
-          <Text style={{ color: "#aaa" }}>No transactions yet.</Text>
-        }
-      />
+        </Pressable>
+
+        <Text
+          style={{
+            color: "white",
+            fontSize: 16,
+            fontWeight: "900",
+            marginBottom: 10,
+          }}
+        >
+          Recent Transactions
+        </Text>
+
+        <FlatList
+          data={items}
+          keyExtractor={(x) => x.id}
+          contentContainerStyle={{ paddingBottom: 90 }}
+          ListEmptyComponent={
+            <Text style={{ color: "#aaa" }}>No transactions yet.</Text>
+          }
+          renderItem={({ item }) => (
+            <TransactionItem
+              item={item}
+              onPress={() =>
+                router.push({
+                  pathname: "/transaction/[id]",
+                  params: { id: item.id },
+                })
+              }
+              onEdit={() =>
+                router.push({
+                  pathname: "/transaction/edit/[id]",
+                  params: { id: item.id },
+                })
+              }
+              onDelete={async () => {
+                const next = await deleteTransaction(item.id);
+                setItems(next);
+              }}
+            />
+          )}
+        />
+      </View>
 
       <FloatingAddButton onPress={() => router.push("/add")} />
-    </View>
+    </SafeAreaView>
   );
 }

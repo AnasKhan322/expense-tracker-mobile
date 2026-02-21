@@ -6,8 +6,12 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: "#000",
+          borderTopColor: "#111",
+        },
         tabBarActiveTintColor: "#9DFF3A",
-        tabBarStyle: { backgroundColor: "#111", borderTopWidth: 0 },
+        tabBarInactiveTintColor: "#777",
       }}
     >
       <Tabs.Screen
@@ -19,15 +23,17 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="stats"
         options={{
           title: "Stats",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart" size={size} color={color} />
+            <Ionicons name="stats-chart" size={size} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
