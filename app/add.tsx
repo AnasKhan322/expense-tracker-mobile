@@ -1,38 +1,41 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import React, { useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, Text, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getCategoriesForType } from "../src/data/categories";
 
 import CategoryGrid from "../src/components/categoryGrid";
-import {
-  getTransactions,
-  saveTransactions,
-} from "../src/storage/transactionStorage";
+import { getCategoriesForType } from "../src/data/categories";
+import { useTransactionsStore } from "../src/store/transactionsStore";
 import { Transaction, TransactionType } from "../src/types/transaction";
 
-export default function Add() {
+function makeId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export default function AddTransaction() {
+  const add = useTransactionsStore((s) => s.add);
+
+  const [type, setType] = useState<TransactionType>("expense");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
-  const [type, setType] = useState<TransactionType>("expense");
-  const [category, setCategory] = useState("Food");
+  const [category, setCategory] = useState<string>("Food");
+
+  const allowed = useMemo(() => getCategoriesForType(type), [type]);
+
+  const switchType = (nextType: TransactionType) => {
+    setType(nextType);
+    const keys = getCategoriesForType(nextType).map((c) => c.key);
+    if (!keys.includes(category)) setCategory(keys[0]);
+  };
 
   const save = async () => {
     const parsed = Number(amount);
-
     if (!title.trim()) return Alert.alert("Missing title", "Enter a title.");
     if (!Number.isFinite(parsed) || parsed <= 0)
       return Alert.alert("Invalid amount", "Enter an amount > 0.");
 
-    const newItem: Transaction = {
-      id: Date.now().toString(),
+    const tx: Transaction = {
+      id: makeId(),
       title: title.trim(),
       amount: parsed,
       category,
@@ -40,10 +43,8 @@ export default function Add() {
       date: new Date().toISOString(),
     };
 
-    const existing = await getTransactions();
-    await saveTransactions([newItem, ...existing]);
-
-    router.dismiss();
+    await add(tx);
+    router.back();
   };
 
   return (
@@ -53,61 +54,47 @@ export default function Add() {
           style={{
             color: "white",
             fontSize: 20,
-            fontWeight: "800",
+            fontWeight: "900",
             marginBottom: 12,
           }}
         >
           Add Transaction
         </Text>
 
-        {/* Type Toggle */}
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-          <Pressable
-            onPress={() => {
-              const nextType: TransactionType = "expense";
-              setType(nextType);
+        <Text style={{ color: "#aaa", marginBottom: 8 }}>Type</Text>
 
-              const allowed = getCategoriesForType(nextType).map((c) => c.key);
-              if (!allowed.includes(category)) setCategory(allowed[0]);
-            }}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: type === "expense" ? "#FF453A" : "#222",
-            }}
+        <Pressable
+          onPress={() => switchType("expense")}
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: type === "expense" ? "#FF453A" : "#222",
+            marginBottom: 10,
+          }}
+        >
+          <Text
+            style={{ color: "white", textAlign: "center", fontWeight: "900" }}
           >
-            <Text
-              style={{ color: "white", textAlign: "center", fontWeight: "800" }}
-            >
-              Expense
-            </Text>
-          </Pressable>
+            Expense
+          </Text>
+        </Pressable>
 
-          <Pressable
-            onPress={() => {
-              const nextType: TransactionType = "income";
-              setType(nextType);
-
-              const allowed = getCategoriesForType(nextType).map((c) => c.key);
-              if (!allowed.includes(category)) setCategory(allowed[0]);
-            }}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: type === "income" ? "#34C759" : "#222",
-            }}
+        <Pressable
+          onPress={() => switchType("income")}
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: type === "income" ? "#34C759" : "#222",
+            marginBottom: 14,
+          }}
+        >
+          <Text
+            style={{ color: "white", textAlign: "center", fontWeight: "900" }}
           >
-            <Text
-              style={{ color: "white", textAlign: "center", fontWeight: "800" }}
-            >
-              Income
-            </Text>
-          </Pressable>
-        </View>
+            Income
+          </Text>
+        </Pressable>
 
-        {/* Title */}
         <Text style={{ color: "#aaa", marginBottom: 6 }}>Title</Text>
         <TextInput
           value={title}
@@ -123,7 +110,6 @@ export default function Add() {
           placeholderTextColor="#666"
         />
 
-        {/* Amount */}
         <Text style={{ color: "#aaa", marginBottom: 6 }}>Amount</Text>
         <TextInput
           value={amount}
@@ -140,11 +126,9 @@ export default function Add() {
           placeholderTextColor="#666"
         />
 
-        {/* Category grid */}
         <Text style={{ color: "#aaa", marginBottom: 10 }}>Category</Text>
         <CategoryGrid selected={category} onSelect={setCategory} type={type} />
 
-        {/* Save */}
         <Pressable
           onPress={save}
           style={{
@@ -162,7 +146,7 @@ export default function Add() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.dismiss()}
+          onPress={() => router.back()}
           style={{ padding: 12, marginTop: 6 }}
         >
           <Text style={{ color: "#aaa", textAlign: "center" }}>Cancel</Text>

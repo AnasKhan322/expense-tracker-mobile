@@ -1,33 +1,30 @@
-import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import {
-  deleteTransaction,
-  getTransactions,
-} from "../../src/storage/transactionStorage";
-import { Transaction } from "../../src/types/transaction";
-import { totals } from "../../src/utils/money";
 
 import BalanceCard from "../../src/components/balanceCard";
 import FloatingAddButton from "../../src/components/floatingAddButton";
 import TransactionItem from "../../src/components/transactionItem";
+import { useTransactionsStore } from "../../src/store/transactionsStore";
+
+import { totals } from "../../src/utils/money";
 
 export default function Home() {
-  const [items, setItems] = useState<Transaction[]>([]);
+  const items = useTransactionsStore((s) => s.transactions);
+  const remove = useTransactionsStore((s) => s.remove);
 
-  const load = useCallback(async () => {
-    const data = await getTransactions();
-    setItems(data);
+  const openSwipeRef = useRef<any>(null);
+  const closeAnyOpenSwipe = useCallback(() => {
+    openSwipeRef.current?.close?.();
+    openSwipeRef.current = null;
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      closeAnyOpenSwipe();
       return () => {};
-    }, [load]),
+    }, [closeAnyOpenSwipe]),
   );
 
   const t = useMemo(() => totals(items), [items]);
@@ -46,8 +43,12 @@ export default function Home() {
           Your Finances
         </Text>
 
-        {/* Balance card is tappable -> Overview donut */}
-        <Pressable onPress={() => router.push("/balance")}>
+        <Pressable
+          onPress={() => {
+            closeAnyOpenSwipe();
+            router.push("/balance");
+          }}
+        >
           <BalanceCard
             balance={t.balance}
             income={t.income}
@@ -76,28 +77,41 @@ export default function Home() {
           renderItem={({ item }) => (
             <TransactionItem
               item={item}
-              onPress={() =>
+              onSwipeOpen={(ref) => {
+                if (openSwipeRef.current && openSwipeRef.current !== ref) {
+                  openSwipeRef.current.close?.();
+                }
+                openSwipeRef.current = ref;
+              }}
+              onPress={() => {
+                closeAnyOpenSwipe();
                 router.push({
                   pathname: "/transaction/[id]",
                   params: { id: item.id },
-                })
-              }
-              onEdit={() =>
+                });
+              }}
+              onEdit={() => {
+                closeAnyOpenSwipe();
                 router.push({
                   pathname: "/transaction/edit/[id]",
                   params: { id: item.id },
-                })
-              }
+                });
+              }}
               onDelete={async () => {
-                const next = await deleteTransaction(item.id);
-                setItems(next);
+                await remove(item.id);
+                closeAnyOpenSwipe();
               }}
             />
           )}
         />
       </View>
 
-      <FloatingAddButton onPress={() => router.push("/add")} />
+      <FloatingAddButton
+        onPress={() => {
+          closeAnyOpenSwipe();
+          router.push("/add");
+        }}
+      />
     </SafeAreaView>
   );
 }
