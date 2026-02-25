@@ -1,15 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
-import { Transaction } from "../types/transaction";
+import type { CategoryId } from "../data/categories";
+import type { Transaction, TransactionType } from "../types/transaction";
 
 const STORAGE_KEY = "transactions";
+
+export type NewTransactionInput = {
+  title: string;
+  amount: number;
+  type: TransactionType;
+  category: CategoryId;
+  date: string; // ISO string
+};
 
 type TxState = {
   hydrated: boolean;
   transactions: Transaction[];
 
   hydrate: () => Promise<void>;
-  add: (tx: Transaction) => Promise<void>;
+  add: (input: NewTransactionInput) => Promise<void>;
   update: (tx: Transaction) => Promise<void>;
   remove: (id: string) => Promise<void>;
   getById: (id: string) => Transaction | undefined;
@@ -17,6 +26,11 @@ type TxState = {
 
 async function persist(items: Transaction[]) {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function makeId() {
+  // crypto.randomUUID isn't always available on all RN targets
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export const useTransactionsStore = create<TxState>((set, get) => ({
@@ -36,14 +50,35 @@ export const useTransactionsStore = create<TxState>((set, get) => ({
     }
   },
 
-  add: async (tx) => {
-    const next = [tx, ...get().transactions];
+  add: async (input) => {
+    const now = new Date().toISOString();
+
+    const tx: Transaction = {
+      id: makeId(),
+      title: input.title,
+      amount: input.amount,
+      type: input.type,
+      category: input.category,
+      date: input.date,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const next = [tx, ...get().transactions].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
     set({ transactions: next });
     await persist(next);
   },
 
   update: async (tx) => {
-    const next = get().transactions.map((t) => (t.id === tx.id ? tx : t));
+    const next = get()
+      .transactions.map((t) =>
+        t.id === tx.id ? { ...tx, updatedAt: new Date().toISOString() } : t,
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     set({ transactions: next });
     await persist(next);
   },

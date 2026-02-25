@@ -1,65 +1,76 @@
+// src/components/categoryGrid.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, Pressable, Text, View } from "react-native";
-import { Category, getCategoriesForType } from "../data/categories";
-import { TransactionType } from "../types/transaction";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { CategoryId, CategoryMeta } from "../data/categories";
 
 export default function CategoryGrid({
+  categories = [],
   selected,
   onSelect,
-  type,
 }: {
-  selected: string;
-  onSelect: (key: string) => void;
-  type: TransactionType;
+  categories?: CategoryMeta[];
+  selected: CategoryId | string;
+  onSelect: (key: CategoryId) => void;
 }) {
-  const data = getCategoriesForType(type);
-
-  const renderItem = ({ item }: { item: Category }) => {
-    const isSelected = selected === item.key;
-
-    return (
-      <Pressable
-        onPress={() => onSelect(item.key)}
-        style={{
-          flex: 1,
-          margin: 6, // important for even spacing
-          backgroundColor: isSelected ? "#1a1a1a" : "#111",
-          borderRadius: 16,
-          paddingVertical: 14,
-          alignItems: "center",
-          borderWidth: isSelected ? 1 : 0,
-          borderColor: isSelected ? "#9DFF3A" : "transparent",
-        }}
-      >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            backgroundColor: item.color,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 10,
-          }}
-        >
-          <Ionicons name={item.icon as any} size={20} color="white" />
-        </View>
-
-        <Text style={{ color: "white", fontSize: 12 }} numberOfLines={1}>
-          {item.key}
-        </Text>
-      </Pressable>
-    );
-  };
-
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(x) => x.key}
-      renderItem={renderItem}
-      numColumns={4}
-      scrollEnabled={false}
-      contentContainerStyle={{ paddingBottom: 4 }}
-    />
+    <View style={styles.grid}>
+      {categories.map((c) => {
+        const active = selected === c.key;
+
+        return (
+          <Pressable
+            key={c.key}
+            onPress={() => onSelect(c.key)}
+            style={[styles.card, active && styles.cardActive]}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: c.color }]}>
+              <Ionicons name={c.icon} size={22} color="#fff" />
+            </View>
+
+            <Text style={styles.label} numberOfLines={1}>
+              {c.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+    marginTop: 4,
+  },
+  card: {
+    width: "31.5%", // 3 columns with spacing
+    backgroundColor: "#141414",
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 110,
+    borderWidth: 1,
+    borderColor: "#141414",
+  },
+  cardActive: {
+    borderColor: "#9DFF3A",
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  label: {
+    color: "white",
+    fontWeight: "900",
+    textAlign: "center",
+  },
+});

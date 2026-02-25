@@ -1,14 +1,13 @@
+// src/components/transactionItem.tsx
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useRef } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-} from "react-native-reanimated";
 
 import { getCategoryMeta } from "../data/categories";
-import { Transaction } from "../types/transaction";
+import type { Transaction } from "../types/transaction";
+import { formatShortDate } from "../utils/date";
 import { formatMoney } from "../utils/money";
 
 type Props = {
@@ -16,50 +15,8 @@ type Props = {
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void | Promise<void>;
-  onSwipeOpen?: (ref: any) => void;
+  onSwipeOpen?: (ref: any) => void; // keep loose to avoid type pain
 };
-
-const ROW_HEIGHT = 74;
-const EDIT_W = 92;
-const DELETE_W = 104;
-
-const MOVE_X_THRESHOLD = 10; // tune 8–14
-const MOVE_Y_THRESHOLD = 14; // prevents blocking vertical scrolling taps
-
-function RightActions({
-  progress,
-  dragX,
-  onEdit,
-  onDelete,
-}: {
-  progress: Animated.SharedValue<number>;
-  dragX: Animated.SharedValue<number>;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const animStyle = useAnimatedStyle(() => {
-    const x = interpolate(-dragX.value, [0, 160], [40, 0]);
-    const opacity = interpolate(progress.value, [0, 1], [0.2, 1]);
-    return { transform: [{ translateX: x }], opacity };
-  });
-
-  return (
-    <Animated.View style={[styles.actionsWrap, animStyle]}>
-      <Pressable style={[styles.actionBtn, styles.editBtn]} onPress={onEdit}>
-        <Ionicons name="create-outline" size={20} color="#fff" />
-        <Text style={styles.actionText}>Edit</Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.actionBtn, styles.deleteBtn]}
-        onPress={onDelete}
-      >
-        <Ionicons name="trash-outline" size={20} color="#fff" />
-        <Text style={styles.actionText}>Delete</Text>
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 export default function TransactionItem({
   item,
@@ -68,137 +25,94 @@ export default function TransactionItem({
   onDelete,
   onSwipeOpen,
 }: Props) {
+  const meta = useMemo(() => getCategoryMeta(item.category), [item.category]);
+
   const swipeRef = useRef<any>(null);
 
-  // open state (JS ref)
-  const isOpenRef = useRef(false);
+  // --- Prevent "tap" firing after a swipe ---
+  const touch = useRef({
+    x: 0,
+    y: 0,
+    moved: false,
+  });
 
-  // tap suppression (works even for partial swipes that never "open")
-  const startXRef = useRef(0);
-  const startYRef = useRef(0);
-  const movedRef = useRef(false);
-  const suppressPressRef = useRef(false);
+  const sign = item.type === "income" ? "+" : "-";
+  const color = item.type === "income" ? "#34C759" : "#FF453A";
 
-  const close = () => swipeRef.current?.close?.();
+  const renderRightActions = () => {
+    return (
+      <View style={styles.actionsWrap}>
+        <Pressable
+          onPress={() => {
+            swipeRef.current?.close?.();
+            onEdit();
+          }}
+          style={[styles.actionBtn, styles.editBtn]}
+        >
+          <Ionicons name="pencil" size={18} color="#111" />
+          <Text style={styles.actionTextDark}>Edit</Text>
+        </Pressable>
 
-  const meta = getCategoryMeta(item.category);
-  const isIncome = item.type === "income";
-
-  const date = new Date(item.date);
-  const dateLabel = `${date.getDate()} ${date.toLocaleString("en-US", {
-    month: "short",
-  })}`;
+        <Pressable
+          onPress={async () => {
+            swipeRef.current?.close?.();
+            await onDelete();
+          }}
+          style={[styles.actionBtn, styles.deleteBtn]}
+        >
+          <Ionicons name="trash" size={18} color="#fff" />
+          <Text style={styles.actionTextLight}>Delete</Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      friction={0.85} // smooth/easy
-      rightThreshold={30} // easy to open
+      friction={1.6}
       overshootRight={false}
-      onSwipeableOpen={() => {
-        isOpenRef.current = true;
-
-        // block the "release tap" right after opening
-        suppressPressRef.current = true;
-        onSwipeOpen?.(swipeRef.current);
-
-        setTimeout(() => {
-          suppressPressRef.current = false;
-        }, 250);
-      }}
-      onSwipeableClose={() => {
-        isOpenRef.current = false;
-
-        // block immediate accidental tap right after close
-        suppressPressRef.current = true;
-        setTimeout(() => {
-          suppressPressRef.current = false;
-        }, 250);
-      }}
-      renderRightActions={(progress, dragX) => (
-        <RightActions
-          progress={progress}
-          dragX={dragX}
-          onEdit={() => {
-            close();
-            onEdit();
-          }}
-          onDelete={() => {
-            Alert.alert("Delete transaction?", "This cannot be undone.", [
-              { text: "Cancel", style: "cancel", onPress: () => close() },
-              {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                  close();
-                  await onDelete();
-                },
-              },
-            ]);
-          }}
-        />
-      )}
+      rightThreshold={80} // ✅ actions only really "engage" after 80px
+      enableTrackpadTwoFingerGesture
+      renderRightActions={renderRightActions}
+      onSwipeableWillOpen={() => onSwipeOpen?.(swipeRef.current)}
     >
       <Pressable
-        onPressIn={(e) => {
-          const { pageX, pageY } = e.nativeEvent;
-          startXRef.current = pageX;
-          startYRef.current = pageY;
-          movedRef.current = false;
-          // do NOT reset suppressPressRef here; it might be active from swipe open/close
-        }}
-        onTouchMove={(e) => {
-          const { pageX, pageY } = e.nativeEvent;
-          const dx = pageX - startXRef.current;
-          const dy = pageY - startYRef.current;
-
-          // Horizontal movement => treat as swipe interaction, suppress press
-          if (
-            Math.abs(dx) > MOVE_X_THRESHOLD &&
-            Math.abs(dy) < MOVE_Y_THRESHOLD
-          ) {
-            movedRef.current = true;
-            suppressPressRef.current = true;
-          }
-        }}
+        style={styles.card}
         onPress={() => {
-          // If swipe motion happened (even partial), never navigate
-          if (suppressPressRef.current || movedRef.current) return;
-
-          // If actions are open, tap closes instead of navigating
-          if (isOpenRef.current) {
-            close();
-            return;
-          }
-
-          // Normal tap -> details
-          onPress();
+          // ✅ only open details if it wasn’t a swipe
+          if (!touch.current.moved) onPress();
         }}
-        style={styles.row}
+        onPressIn={(e) => {
+          touch.current.x = e.nativeEvent.pageX;
+          touch.current.y = e.nativeEvent.pageY;
+          touch.current.moved = false;
+        }}
+        onPressOut={(e) => {
+          const dx = Math.abs(e.nativeEvent.pageX - touch.current.x);
+          const dy = Math.abs(e.nativeEvent.pageY - touch.current.y);
+          // horizontal movement threshold to treat as swipe, not tap
+          if (dx > 10 && dx > dy) touch.current.moved = true;
+        }}
       >
-        <View style={styles.iconWrap}>
-          <View style={[styles.iconCircle, { backgroundColor: meta.color }]}>
-            <Ionicons name={meta.icon as any} size={18} color="#fff" />
-          </View>
+        <View style={[styles.iconWrap, { backgroundColor: meta.color }]}>
+          <Ionicons name={meta.icon as any} size={18} color="#fff" />
         </View>
 
-        <View style={styles.mid}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.category} numberOfLines={1}>
+            {meta.label}
+          </Text>
           <Text style={styles.title} numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={styles.sub} numberOfLines={1}>
-            {item.category}
-          </Text>
         </View>
 
-        <View style={styles.right}>
-          <Text
-            style={[styles.amount, { color: isIncome ? "#34C759" : "#FF453A" }]}
-          >
-            {isIncome ? "+" : "-"}
-            {formatMoney(item.amount)}
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={[styles.amount, { color }]}>
+            {sign} {formatMoney(item.amount)}
           </Text>
-          <Text style={styles.sub}>{dateLabel}</Text>
+          <Text style={styles.date}>{formatShortDate(item.date)}</Text>
         </View>
       </Pressable>
     </ReanimatedSwipeable>
@@ -206,37 +120,48 @@ export default function TransactionItem({
 }
 
 const styles = StyleSheet.create({
-  row: {
-    height: ROW_HEIGHT,
+  card: {
+    backgroundColor: "#0d0d0d",
+    borderRadius: 18,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#1a1a1a",
-    backgroundColor: "#000",
+    gap: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#151515",
   },
-  iconWrap: { width: 52, alignItems: "flex-start" },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    justifyContent: "center",
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
     alignItems: "center",
+    justifyContent: "center",
   },
-  mid: { flex: 1, paddingRight: 10 },
-  right: { width: 120, alignItems: "flex-end" },
-
-  title: { color: "#fff", fontWeight: "900", fontSize: 15 },
-  sub: { color: "#8b8b8b", marginTop: 2, fontSize: 12 },
-  amount: { fontWeight: "900", fontSize: 14 },
+  category: { color: "white", fontWeight: "900", fontSize: 16 },
+  title: { color: "#9a9a9a", marginTop: 4, fontWeight: "700" },
+  amount: { fontWeight: "900", fontSize: 16 },
+  date: { color: "#8b8b8b", marginTop: 6, fontWeight: "700" },
 
   actionsWrap: {
     flexDirection: "row",
-    height: ROW_HEIGHT,
-    alignItems: "stretch",
+    alignItems: "center",
+    gap: 10,
+    paddingRight: 8,
+    marginBottom: 12,
   },
-  actionBtn: { justifyContent: "center", alignItems: "center" },
-  editBtn: { width: EDIT_W, backgroundColor: "#2b2b2b" },
-  deleteBtn: { width: DELETE_W, backgroundColor: "#FF453A" },
-  actionText: { color: "#fff", marginTop: 4, fontSize: 12, fontWeight: "900" },
+  actionBtn: {
+    height: "100%",
+    minWidth: 88,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  editBtn: { backgroundColor: "#9DFF3A" },
+  deleteBtn: { backgroundColor: "#FF453A" },
+  actionTextDark: { color: "#111", fontWeight: "900" },
+  actionTextLight: { color: "#fff", fontWeight: "900" },
 });

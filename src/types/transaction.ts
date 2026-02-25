@@ -1,10 +1,15 @@
-export type TransactionType = "income" | "expense";
+import type { CategoryId } from "../data/categories";
+
+export type TransactionType = "expense" | "income";
 
 export type Transaction = {
   id: string;
   title: string;
   amount: number;
+  category: CategoryId;
   type: TransactionType;
-  category: string;
-  date: string; // ISO string
+
+  date: string;
+  createdAt: string;
+  updatedAt: string;
 };

@@ -1,45 +1,125 @@
-import { TransactionType } from "../types/transaction";
+// src/data/categories.ts
+import { Ionicons } from "@expo/vector-icons";
 
-export type CategoryFor = TransactionType | "both";
+export type CategoryId =
+  | "Food"
+  | "Health"
+  | "Transport"
+  | "Shopping"
+  | "Bills"
+  | "Entertainment"
+  | "Salary"
+  | "Gift"
+  | "Freelance"
+  | "Other";
 
-export type Category = {
-  key: string;
-  icon: string;
+export type CategoryType = "expense" | "income" | "both";
+
+export type CategoryMeta = {
+  key: CategoryId;
+  label: string;
+  type: CategoryType;
   color: string;
-  for: CategoryFor;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
-export const categories: Category[] = [
-  { key: "Food", icon: "fast-food", color: "#FF4D4D", for: "expense" },
-  { key: "Health", icon: "heart", color: "#FF2D55", for: "expense" },
-  { key: "Transport", icon: "car", color: "#0A84FF", for: "expense" },
-  { key: "Shopping", icon: "cart", color: "#AF52DE", for: "expense" },
-  { key: "Bills", icon: "receipt", color: "#FF9F0A", for: "expense" },
+export const CATEGORIES: CategoryMeta[] = [
+  // Expense
+  {
+    key: "Food",
+    label: "Food",
+    type: "expense",
+    color: "#FF453A",
+    icon: "restaurant",
+  },
+  {
+    key: "Health",
+    label: "Health",
+    type: "expense",
+    color: "#FF2D55",
+    icon: "heart",
+  },
+  {
+    key: "Transport",
+    label: "Transport",
+    type: "expense",
+    color: "#0A84FF",
+    icon: "car",
+  },
+  {
+    key: "Shopping",
+    label: "Shopping",
+    type: "expense",
+    color: "#AF52DE",
+    icon: "cart",
+  },
+  {
+    key: "Bills",
+    label: "Bills",
+    type: "expense",
+    color: "#FF9F0A",
+    icon: "receipt",
+  },
   {
     key: "Entertainment",
-    icon: "game-controller",
+    label: "Entertainment",
+    type: "expense",
     color: "#64D2FF",
-    for: "expense",
+    icon: "game-controller",
   },
 
-  { key: "Salary", icon: "cash", color: "#34C759", for: "income" },
-  { key: "Gift", icon: "gift", color: "#FFD60A", for: "income" },
-  { key: "Freelance", icon: "briefcase", color: "#32D74B", for: "income" },
+  // Income
+  {
+    key: "Salary",
+    label: "Salary",
+    type: "income",
+    color: "#34C759",
+    icon: "cash",
+  },
+  {
+    key: "Freelance",
+    label: "Freelance",
+    type: "income",
+    color: "#32D74B",
+    icon: "briefcase",
+  },
+  {
+    key: "Gift",
+    label: "Gift",
+    type: "income",
+    color: "#30D158",
+    icon: "gift",
+  },
 
-  { key: "Other", icon: "pricetag", color: "#8E8E93", for: "both" },
+  // Shared fallback
+  {
+    key: "Other",
+    label: "Other",
+    type: "both",
+    color: "#8E8E93",
+    icon: "pricetag",
+  },
 ];
 
-export function getCategoriesForType(type: TransactionType) {
-  return categories.filter((c) => c.for === type || c.for === "both");
+export function getCategoriesForType(type: "expense" | "income") {
+  return CATEGORIES.filter((c) => c.type === type || c.type === "both");
 }
 
-export function getCategoryMeta(category: string) {
-  return (
-    categories.find((c) => c.key === category) ?? {
-      key: category,
-      icon: "pricetag",
-      color: "#8E8E93",
-      for: "both" as const,
-    }
-  );
+/**
+ * NEVER returns null. This is what fixes:
+ * - icons disappearing
+ * - "meta is possibly null"
+ */
+export function getCategoryMeta(key: string | null | undefined): CategoryMeta {
+  const found = CATEGORIES.find((c) => c.key === key);
+  if (found) return found;
+
+  // hard fallback
+  return {
+    key: "Other",
+    label: "Other",
+    type: "both",
+    color: "#8E8E93",
+    icon: "pricetag",
+  };
 }

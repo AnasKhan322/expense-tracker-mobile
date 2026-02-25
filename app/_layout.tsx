@@ -45,6 +45,7 @@ export default function RootLayout() {
           name="transaction/edit/[id]"
           options={{ headerShown: true, title: "Edit Transaction" }}
         />
+        <Stack.Screen name="category/[name]" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );

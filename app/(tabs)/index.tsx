@@ -1,3 +1,4 @@
+// app/(tabs)/index.tsx
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
@@ -7,7 +8,6 @@ import BalanceCard from "../../src/components/balanceCard";
 import FloatingAddButton from "../../src/components/floatingAddButton";
 import TransactionItem from "../../src/components/transactionItem";
 import { useTransactionsStore } from "../../src/store/transactionsStore";
-
 import { totals } from "../../src/utils/money";
 
 export default function Home() {
@@ -15,6 +15,7 @@ export default function Home() {
   const remove = useTransactionsStore((s) => s.remove);
 
   const openSwipeRef = useRef<any>(null);
+
   const closeAnyOpenSwipe = useCallback(() => {
     openSwipeRef.current?.close?.();
     openSwipeRef.current = null;
@@ -23,7 +24,7 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       closeAnyOpenSwipe();
-      return () => {};
+      return () => closeAnyOpenSwipe();
     }, [closeAnyOpenSwipe]),
   );
 
@@ -62,6 +63,7 @@ export default function Home() {
             fontSize: 16,
             fontWeight: "900",
             marginBottom: 10,
+            marginTop: 14,
           }}
         >
           Recent Transactions
@@ -70,7 +72,7 @@ export default function Home() {
         <FlatList
           data={items}
           keyExtractor={(x) => x.id}
-          contentContainerStyle={{ paddingBottom: 90 }}
+          contentContainerStyle={{ paddingBottom: 110 }}
           ListEmptyComponent={
             <Text style={{ color: "#aaa" }}>No transactions yet.</Text>
           }

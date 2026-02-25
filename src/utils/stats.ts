@@ -1,46 +1,58 @@
 import { Transaction } from "../types/transaction";
 
-export type RangeKey = "7d" | "30d" | "90d" | "all";
+export type RangeKey = "7d" | "30d" | "90d" | "ytd" | "all";
 
-export function filterByRange(items: Transaction[], range: RangeKey) {
+export function filterByRange(
+  items: Transaction[],
+  range: RangeKey,
+): Transaction[] {
   if (range === "all") return items;
 
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const now = new Date();
+  let start: Date;
 
-  return items.filter((t) => new Date(t.date).getTime() >= cutoff);
+  if (range === "ytd") {
+    start = new Date(now.getFullYear(), 0, 1);
+  } else {
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+    start = new Date(now);
+    start.setDate(start.getDate() - days);
+  }
+
+  const startMs = start.getTime();
+  return items.filter((t) => new Date(t.date).getTime() >= startMs);
 }
 
-export function sumIncome(items: Transaction[]) {
-  return items
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
+export function sumIncome(items: Transaction[]): number {
+  return items.reduce(
+    (acc, t) => (t.type === "income" ? acc + t.amount : acc),
+    0,
+  );
 }
 
-export function sumExpense(items: Transaction[]) {
-  return items
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
+export function sumExpense(items: Transaction[]): number {
+  return items.reduce(
+    (acc, t) => (t.type === "expense" ? acc + t.amount : acc),
+    0,
+  );
 }
 
 export function groupByCategory(
   items: Transaction[],
-  type: "income" | "expense",
-) {
-  const map = new Map<string, number>();
+  mode: "expense" | "income",
+): { category: string; total: number; count: number }[] {
+  const map = new Map<string, { total: number; count: number }>();
 
   for (const t of items) {
-    if (t.type !== type) continue;
-    map.set(t.category, (map.get(t.category) ?? 0) + t.amount);
+    if (t.type !== mode) continue;
+    const prev = map.get(t.category) ?? { total: 0, count: 0 };
+    map.set(t.category, {
+      total: prev.total + t.amount,
+      count: prev.count + 1,
+    });
   }
 
-  const result = Array.from(map.entries()).map(([category, total]) => ({
-    category,
-    total,
-  }));
-
-  // biggest first
-  result.sort((a, b) => b.total - a.total);
-
-  return result;
+  return [...map.entries()]
+    .map(([category, v]) => ({ category, total: v.total, count: v.count }))
+    .sort((a, b) => b.total - a.total);
 }
