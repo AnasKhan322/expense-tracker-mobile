@@ -4,6 +4,13 @@ import type { CategoryId } from "../data/categories";
 import type { Transaction, TransactionType } from "../types/transaction";
 
 const STORAGE_KEY = "transactions";
+export type SortKey = "date" | "amount";
+export type SortDir = "desc" | "asc";
+
+export type TxFilters = {
+  type: TransactionType | "all";
+  category: CategoryId | "all";
+};
 
 export type NewTransactionInput = {
   title: string;
@@ -17,11 +24,18 @@ type TxState = {
   hydrated: boolean;
   transactions: Transaction[];
 
+  filters: TxFilters;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  setFilters: (patch: Partial<TxFilters>) => void;
+  setSort: (key: SortKey, dir: SortDir) => void;
+  clearFilters: () => void;
   hydrate: () => Promise<void>;
   add: (input: NewTransactionInput) => Promise<void>;
   update: (tx: Transaction) => Promise<void>;
   remove: (id: string) => Promise<void>;
   getById: (id: string) => Transaction | undefined;
+  // getVisible: () => Transaction[];
 };
 
 async function persist(items: Transaction[]) {
@@ -36,6 +50,15 @@ function makeId() {
 export const useTransactionsStore = create<TxState>((set, get) => ({
   hydrated: false,
   transactions: [],
+
+  // NEW defaults
+  filters: { type: "all", category: "all" },
+  sortKey: "date",
+  sortDir: "desc",
+
+  setFilters: (patch) => set({ filters: { ...get().filters, ...patch } }),
+  setSort: (key, dir) => set({ sortKey: key, sortDir: dir }),
+  clearFilters: () => set({ filters: { type: "all", category: "all" } }),
 
   hydrate: async () => {
     try {
@@ -90,4 +113,23 @@ export const useTransactionsStore = create<TxState>((set, get) => ({
   },
 
   getById: (id) => get().transactions.find((t) => t.id === id),
+
+  // NEW derived getter
+  // getVisible: () => {
+  //   const { transactions, filters, sortKey, sortDir } = get();
+
+  //   const filtered = transactions.filter((t) => {
+  //     if (filters.type !== "all" && t.type !== filters.type) return false;
+  //     if (filters.category !== "all" && t.category !== filters.category)
+  //       return false;
+  //     return true;
+  //   });
+
+  //   const dir = sortDir === "asc" ? 1 : -1;
+
+  //   return filtered.sort((a, b) => {
+  //     if (sortKey === "amount") return (a.amount - b.amount) * dir;
+  //     return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+  //   });
+  // },
 }));

@@ -4,7 +4,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { CategoryId, CategoryMeta } from "../data/categories";
 
-export default function CategoryGrid({
+function CategoryGrid({
   categories = [],
   selected,
   onSelect,
@@ -38,6 +38,8 @@ export default function CategoryGrid({
   );
 }
 
+export default React.memo(CategoryGrid);
+
 const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
@@ -47,7 +49,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   card: {
-    width: "31.5%", // 3 columns with spacing
+    width: "31.5%",
     backgroundColor: "#141414",
     borderRadius: 18,
     paddingVertical: 14,

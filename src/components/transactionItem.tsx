@@ -2,10 +2,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 
 import { getCategoryMeta } from "../data/categories";
+import { useSettingsStore } from "../store/settingsStore";
 import type { Transaction } from "../types/transaction";
 import { formatShortDate } from "../utils/date";
 import { formatMoney } from "../utils/money";
@@ -15,7 +15,7 @@ type Props = {
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void | Promise<void>;
-  onSwipeOpen?: (ref: any) => void; // keep loose to avoid type pain
+  onSwipeOpen?: (ref: any) => void;
 };
 
 export default function TransactionItem({
@@ -26,15 +26,12 @@ export default function TransactionItem({
   onSwipeOpen,
 }: Props) {
   const meta = useMemo(() => getCategoryMeta(item.category), [item.category]);
+  const currency = useSettingsStore((s) => s.currency);
 
   const swipeRef = useRef<any>(null);
 
-  // --- Prevent "tap" firing after a swipe ---
-  const touch = useRef({
-    x: 0,
-    y: 0,
-    moved: false,
-  });
+  // Prevent "tap" firing after a swipe
+  const touch = useRef({ x: 0, y: 0, moved: false });
 
   const sign = item.type === "income" ? "+" : "-";
   const color = item.type === "income" ? "#34C759" : "#FF453A";
@@ -70,9 +67,9 @@ export default function TransactionItem({
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      friction={1.6}
-      overshootRight={false}
-      rightThreshold={80} // ✅ actions only really "engage" after 80px
+      friction={1.2}
+      rightThreshold={60}
+      overshootRight={true}
       enableTrackpadTwoFingerGesture
       renderRightActions={renderRightActions}
       onSwipeableWillOpen={() => onSwipeOpen?.(swipeRef.current)}
@@ -80,7 +77,6 @@ export default function TransactionItem({
       <Pressable
         style={styles.card}
         onPress={() => {
-          // ✅ only open details if it wasn’t a swipe
           if (!touch.current.moved) onPress();
         }}
         onPressIn={(e) => {
@@ -91,7 +87,6 @@ export default function TransactionItem({
         onPressOut={(e) => {
           const dx = Math.abs(e.nativeEvent.pageX - touch.current.x);
           const dy = Math.abs(e.nativeEvent.pageY - touch.current.y);
-          // horizontal movement threshold to treat as swipe, not tap
           if (dx > 10 && dx > dy) touch.current.moved = true;
         }}
       >
@@ -110,7 +105,7 @@ export default function TransactionItem({
 
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[styles.amount, { color }]}>
-            {sign} {formatMoney(item.amount)}
+            {sign} {formatMoney(item.amount, currency)}
           </Text>
           <Text style={styles.date}>{formatShortDate(item.date)}</Text>
         </View>

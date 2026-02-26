@@ -1,10 +1,16 @@
 // src/utils/money.ts
 import type { Transaction } from "../types/transaction";
 
-export function formatMoney(n: number): string {
-  // simple, stable formatting (no Intl issues on Android emulators)
-  const fixed = Number.isFinite(n) ? n.toFixed(2) : "0.00";
-  return `$ ${fixed}`;
+export function formatMoney(amount: number, currency: string = "USD") {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
 }
 
 export function totals(items: Transaction[]) {
