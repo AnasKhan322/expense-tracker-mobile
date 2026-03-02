@@ -94,12 +94,13 @@ export default function TransactionItem({
           <Ionicons name={meta.icon as any} size={18} color="#fff" />
         </View>
 
+        {/* ✅ flipped: title primary, category secondary */}
         <View style={{ flex: 1 }}>
-          <Text style={styles.category} numberOfLines={1}>
-            {meta.label}
-          </Text>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.titleMain} numberOfLines={1}>
             {item.title}
+          </Text>
+          <Text style={styles.categorySub} numberOfLines={1}>
+            {meta.label}
           </Text>
         </View>
 
@@ -133,8 +134,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  category: { color: "white", fontWeight: "900", fontSize: 16 },
-  title: { color: "#9a9a9a", marginTop: 4, fontWeight: "700" },
+
+  titleMain: { color: "white", fontWeight: "900", fontSize: 16 },
+  categorySub: { color: "#9a9a9a", marginTop: 4, fontWeight: "700" },
+
   amount: { fontWeight: "900", fontSize: 16 },
   date: { color: "#8b8b8b", marginTop: 6, fontWeight: "700" },
 

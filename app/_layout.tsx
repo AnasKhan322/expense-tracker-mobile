@@ -54,6 +54,9 @@ export default function RootLayout() {
             presentation: "modal",
             headerShown: true,
             title: "Financial Overview",
+            headerStyle: { backgroundColor: "#000" },
+            headerTintColor: "#fff",
+            headerTitleStyle: { fontWeight: "900" },
           }}
         />
         <Stack.Screen

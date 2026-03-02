@@ -1,365 +1,393 @@
+// app/(tabs)/stats.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import Segmented from "../../src/components/segmented";
 import { getCategoryMeta } from "../../src/data/categories";
+import { useSettingsStore } from "../../src/store/settingsStore";
 import { useTransactionsStore } from "../../src/store/transactionsStore";
+import type { TransactionType } from "../../src/types/transaction";
 import { formatMoney } from "../../src/utils/money";
-import {
-  filterByRange,
-  groupByCategory,
-  RangeKey,
-  sumExpense,
-  sumIncome,
-} from "../../src/utils/stats";
 
-type Mode = "expense" | "income";
+type RangeKey = "7D" | "30D" | "90D" | "YTD" | "ALL";
 
-const ranges: { label: string; value: RangeKey }[] = [
-  { label: "7D", value: "7d" },
-  { label: "30D", value: "30d" },
-  { label: "90D", value: "90d" },
-  { label: "YTD", value: "ytd" },
-  { label: "All", value: "all" },
-];
+function startOfYear(d: Date) {
+  return new Date(d.getFullYear(), 0, 1);
+}
+
+function sinceForRange(range: RangeKey) {
+  const now = new Date();
+  if (range === "ALL") return null;
+  if (range === "YTD") return startOfYear(now).getTime();
+
+  const days = range === "7D" ? 7 : range === "30D" ? 30 : 90;
+  const t = new Date(now);
+  t.setDate(t.getDate() - days);
+  return t.getTime();
+}
 
 export default function Stats() {
-  const items = useTransactionsStore((s) => s.transactions);
+  const currency = useSettingsStore((s) => s.currency);
+  const transactions = useTransactionsStore((s) => s.transactions);
 
-  const [range, setRange] = useState<RangeKey>("30d");
-  const [mode, setMode] = useState<Mode>("expense");
+  const [range, setRange] = useState<RangeKey>("30D");
+  const [mode, setMode] = useState<TransactionType>("expense");
 
-  const filtered = useMemo(() => filterByRange(items, range), [items, range]);
+  const since = useMemo(() => sinceForRange(range), [range]);
 
-  const income = useMemo(() => sumIncome(filtered), [filtered]);
-  const expense = useMemo(() => sumExpense(filtered), [filtered]);
-  const net = income - expense;
+  const scoped = useMemo(() => {
+    if (since == null) return transactions;
+    return transactions.filter((t) => new Date(t.date).getTime() >= since);
+  }, [transactions, since]);
 
-  const byCategory = useMemo(
-    () => groupByCategory(filtered, mode),
-    [filtered, mode],
+  const incomeTotal = useMemo(
+    () =>
+      scoped
+        .filter((t) => t.type === "income")
+        .reduce((a, b) => a + b.amount, 0),
+    [scoped],
   );
 
-  const totalForMode = useMemo(
-    () => byCategory.reduce((a, x) => a + x.total, 0),
-    [byCategory],
+  const expenseTotal = useMemo(
+    () =>
+      scoped
+        .filter((t) => t.type === "expense")
+        .reduce((a, b) => a + b.amount, 0),
+    [scoped],
   );
+
+  const net = incomeTotal - expenseTotal;
+
+  const byCategory = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const tx of scoped) {
+      if (tx.type !== mode) continue;
+      const prev = map.get(tx.category) ?? { total: 0, count: 0 };
+      map.set(tx.category, {
+        total: prev.total + tx.amount,
+        count: prev.count + 1,
+      });
+    }
+    const arr = Array.from(map.entries()).map(([category, v]) => ({
+      category,
+      total: v.total,
+      count: v.count,
+    }));
+    arr.sort((a, b) => b.total - a.total);
+    return arr;
+  }, [scoped, mode]);
 
   const top3 = byCategory.slice(0, 3);
+  const denom = byCategory.reduce((s, x) => s + x.total, 0);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
-      <View style={{ flex: 1, padding: 18 }}>
-        <Text style={styles.title}>Stats</Text>
+      <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
+        <Text
+          style={{
+            color: "white",
+            fontSize: 24,
+            fontWeight: "900",
+            marginBottom: 12,
+          }}
+        >
+          Stats
+        </Text>
 
-        {/* Range Selector */}
-        <View style={styles.pillRow}>
-          {ranges.map((r) => {
-            const active = r.value === range;
+        {/* Range pills (smaller) */}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+          {(["7D", "30D", "90D", "YTD", "ALL"] as RangeKey[]).map((k) => {
+            const active = k === range;
             return (
               <Pressable
-                key={r.value}
-                onPress={() => setRange(r.value)}
-                style={[styles.pill, active && styles.pillActive]}
+                key={k}
+                onPress={() => setRange(k)}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 999,
+                  backgroundColor: active ? "#9DFF3A" : "#141414",
+                }}
               >
                 <Text
-                  style={[styles.pillText, active && styles.pillTextActive]}
+                  style={{ fontWeight: "900", color: active ? "#111" : "#bbb" }}
                 >
-                  {r.label}
+                  {k}
                 </Text>
               </Pressable>
             );
           })}
         </View>
 
-        {/* Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
+        {/* Summary card (smaller) */}
+        <View
+          style={{
+            backgroundColor: "#0d0d0d",
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: "#151515",
+            padding: 14,
+          }}
+        >
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
             <View>
-              <Text style={styles.muted}>Income</Text>
-              <Text style={[styles.big, { color: "#34C759" }]}>
-                {formatMoney(income)}
+              <Text
+                style={{ color: "#9a9a9a", fontWeight: "900", fontSize: 14 }}
+              >
+                Income
+              </Text>
+              <Text
+                style={{
+                  color: "#34C759",
+                  fontWeight: "900",
+                  fontSize: 20,
+                  marginTop: 6,
+                }}
+              >
+                {formatMoney(incomeTotal, currency)}
               </Text>
             </View>
+
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.muted}>Expense</Text>
-              <Text style={[styles.big, { color: "#FF453A" }]}>
-                {formatMoney(expense)}
+              <Text
+                style={{ color: "#9a9a9a", fontWeight: "900", fontSize: 14 }}
+              >
+                Expense
+              </Text>
+              <Text
+                style={{
+                  color: "#FF453A",
+                  fontWeight: "900",
+                  fontSize: 20,
+                  marginTop: 6,
+                }}
+              >
+                {formatMoney(expenseTotal, currency)}
               </Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: "#151515",
+              marginVertical: 12,
+            }}
+          />
 
-          <View style={styles.summaryRow}>
-            <Text style={styles.muted}>Net</Text>
-            <Text style={[styles.big, { color: "white" }]}>
-              {formatMoney(net)}
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <Text style={{ color: "#9a9a9a", fontWeight: "900", fontSize: 14 }}>
+              Net
+            </Text>
+            <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
+              {formatMoney(net, currency)}
             </Text>
           </View>
         </View>
 
-        {/* Mode Toggle */}
-        <View style={styles.modeRow}>
-          <Pressable
-            onPress={() => setMode("expense")}
-            style={[styles.modeBtn, mode === "expense" && styles.modeBtnActive]}
-          >
-            <Text
-              style={[
-                styles.modeText,
-                mode === "expense" && styles.modeTextActive,
-              ]}
-            >
-              Expense
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setMode("income")}
-            style={[styles.modeBtn, mode === "income" && styles.modeBtnActive]}
-          >
-            <Text
-              style={[
-                styles.modeText,
-                mode === "income" && styles.modeTextActive,
-              ]}
-            >
-              Income
-            </Text>
-          </Pressable>
+        {/* Mode toggle (keep but smaller via Segmented component if you want) */}
+        <View style={{ marginTop: 12 }}>
+          <Segmented
+            value={mode}
+            options={[
+              { label: "Expense", value: "expense" },
+              { label: "Income", value: "income" },
+            ]}
+            onChange={setMode}
+          />
         </View>
 
-        {/* Top Categories */}
-        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
+        {/* Top categories */}
+        <Text
+          style={{
+            color: "white",
+            fontSize: 18,
+            fontWeight: "900",
+            marginTop: 16,
+            marginBottom: 10,
+          }}
+        >
           Top Categories
         </Text>
 
-        <View style={styles.topRow}>
-          {top3.length === 0 ? (
-            <Text style={{ color: "#aaa" }}>No data.</Text>
-          ) : (
-            top3.map((x) => {
-              const meta = getCategoryMeta(x.category);
-              const pct =
-                totalForMode > 0
-                  ? Math.round((x.total / totalForMode) * 100)
-                  : 0;
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          {top3.map((row) => {
+            const meta = getCategoryMeta(row.category as any);
+            const pct = denom === 0 ? 0 : Math.round((row.total / denom) * 100);
 
-              return (
-                <Pressable
-                  key={x.category}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/category/[name]",
-                      params: { name: x.category },
-                    })
-                  }
-                  style={styles.topCard}
+            return (
+              <View
+                key={row.category}
+                style={{
+                  flex: 1,
+                  backgroundColor: "#0d0d0d",
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: "#151515",
+                  padding: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 18,
+                    backgroundColor: meta.color,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 10,
+                  }}
                 >
-                  <View
-                    style={[styles.topIcon, { backgroundColor: meta.color }]}
-                  >
-                    <Ionicons name={meta.icon as any} size={18} color="#fff" />
-                  </View>
+                  <Ionicons name={meta.icon as any} size={20} color="#fff" />
+                </View>
 
-                  <Text style={styles.topCat} numberOfLines={1}>
-                    {x.category}
-                  </Text>
-                  <Text style={styles.topVal}>{formatMoney(x.total)}</Text>
-                  <Text style={styles.topPct}>{pct}%</Text>
-                </Pressable>
-              );
-            })
-          )}
+                <Text
+                  style={{ color: "white", fontWeight: "900", fontSize: 16 }}
+                  numberOfLines={1}
+                >
+                  {meta.label}
+                </Text>
+
+                <Text
+                  style={{
+                    color: "#bdbdbd",
+                    fontWeight: "900",
+                    fontSize: 16,
+                    marginTop: 8,
+                  }}
+                >
+                  {formatMoney(row.total, currency)}
+                </Text>
+
+                <Text
+                  style={{
+                    color: "#9DFF3A",
+                    fontWeight: "900",
+                    fontSize: 16,
+                    marginTop: 6,
+                  }}
+                >
+                  {pct}%
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Breakdown */}
-        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Breakdown</Text>
+        <Text
+          style={{
+            color: "white",
+            fontSize: 18,
+            fontWeight: "900",
+            marginTop: 16,
+            marginBottom: 10,
+          }}
+        >
+          Breakdown
+        </Text>
 
-        <FlatList
-          data={byCategory}
-          keyExtractor={(x) => x.category}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          ListEmptyComponent={
-            <Text style={{ color: "#aaa" }}>
-              No transactions in this range.
-            </Text>
-          }
-          renderItem={({ item }) => {
-            const meta = getCategoryMeta(item.category);
-            const pct = totalForMode > 0 ? item.total / totalForMode : 0;
+        <View style={{ gap: 12 }}>
+          {byCategory.map((row) => {
+            const meta = getCategoryMeta(row.category as any);
+            const pct = denom === 0 ? 0 : row.total / denom;
+            const pct100 = Math.round(pct * 100);
 
             return (
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/category/[name]",
-                    params: { name: item.category },
-                  })
-                }
-                style={styles.row}
+              <View
+                key={row.category}
+                style={{
+                  paddingBottom: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#151515",
+                }}
               >
-                <View style={[styles.icon, { backgroundColor: meta.color }]}>
-                  <Ionicons name={meta.icon as any} size={18} color="#fff" />
-                </View>
-
-                <View style={{ flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
                   <View
                     style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
+                      width: 46,
+                      height: 46,
+                      borderRadius: 18,
+                      backgroundColor: meta.color,
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <Text style={styles.rowTitle}>{item.category}</Text>
-                    <Text style={styles.rowAmt}>{formatMoney(item.total)}</Text>
+                    <Ionicons name={meta.icon as any} size={20} color="#fff" />
                   </View>
 
-                  <View style={styles.barBg}>
+                  <View style={{ flex: 1 }}>
                     <View
-                      style={[
-                        styles.barFill,
-                        {
-                          width: `${Math.round(pct * 100)}%`,
-                        },
-                      ]}
-                    />
-                  </View>
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Text
+                        style={{
+                          color: "white",
+                          fontWeight: "900",
+                          fontSize: 16,
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {meta.label}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "white",
+                          fontWeight: "900",
+                          fontSize: 16,
+                        }}
+                      >
+                        {formatMoney(row.total, currency)}
+                      </Text>
+                    </View>
 
-                  <Text style={styles.rowMeta}>
-                    {item.count} tx • {Math.round(pct * 100)}%
-                  </Text>
+                    <View
+                      style={{
+                        marginTop: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        backgroundColor: "#1b1b1b",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: `${pct100}%`,
+                          height: "100%",
+                          backgroundColor: "#9DFF3A",
+                        }}
+                      />
+                    </View>
+
+                    <Text
+                      style={{
+                        color: "#8b8b8b",
+                        fontWeight: "800",
+                        marginTop: 6,
+                      }}
+                    >
+                      {row.count} tx • {pct100}%
+                    </Text>
+                  </View>
                 </View>
-              </Pressable>
+              </View>
             );
-          }}
-        />
-      </View>
+          })}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-  pillRow: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  pill: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "#141414",
-  },
-  pillActive: { backgroundColor: "#9DFF3A" },
-  pillText: {
-    color: "#cfcfcf",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  pillTextActive: { color: "#111" },
-
-  summaryCard: {
-    backgroundColor: "#0d0d0d",
-    borderRadius: 18,
-    padding: 16,
-    marginTop: 14,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  muted: { color: "#aaa", fontWeight: "700" },
-  big: { fontSize: 18, fontWeight: "900", marginTop: 6 },
-  divider: {
-    height: 1,
-    backgroundColor: "#1f1f1f",
-    marginVertical: 14,
-  },
-
-  modeRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  modeBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#141414",
-  },
-  modeBtnActive: {
-    backgroundColor: "#1f1f1f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-  },
-  modeText: {
-    textAlign: "center",
-    color: "#cfcfcf",
-    fontWeight: "900",
-  },
-  modeTextActive: { color: "white" },
-
-  sectionTitle: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-
-  topRow: { flexDirection: "row", gap: 10 },
-  topCard: {
-    flex: 1,
-    backgroundColor: "#0d0d0d",
-    borderRadius: 16,
-    padding: 12,
-  },
-  topIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  topCat: { color: "white", fontWeight: "900" },
-  topVal: { color: "#cfcfcf", marginTop: 6, fontWeight: "800" },
-  topPct: { color: "#9DFF3A", marginTop: 2, fontWeight: "900" },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1a1a1a",
-  },
-  icon: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowTitle: { color: "white", fontWeight: "900" },
-  rowAmt: { color: "white", fontWeight: "900" },
-  barBg: {
-    height: 8,
-    backgroundColor: "#1a1a1a",
-    borderRadius: 999,
-    marginTop: 8,
-    overflow: "hidden",
-  },
-  barFill: { height: 8, backgroundColor: "#9DFF3A" },
-  rowMeta: {
-    color: "#8b8b8b",
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-});

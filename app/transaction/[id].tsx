@@ -1,39 +1,31 @@
+// app/transaction/[id].tsx
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getCategoryMeta } from "../../src/data/categories";
+import { useSettingsStore } from "../../src/store/settingsStore";
 import { useTransactionsStore } from "../../src/store/transactionsStore";
+import { formatShortDate } from "../../src/utils/date";
 import { formatMoney } from "../../src/utils/money";
 
 export default function TransactionDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const tx = useTransactionsStore((s) =>
-    id ? s.getById(String(id)) : undefined,
-  );
-  const remove = useTransactionsStore((s) => s.remove);
+  const tx = useTransactionsStore((s) => s.getById(id));
+  const currency = useSettingsStore((s) => s.currency);
 
-  const meta = useMemo(
-    () => getCategoryMeta(tx?.category ?? "Other"),
-    [tx?.category],
-  );
+  const meta = useMemo(() => (tx ? getCategoryMeta(tx.category) : null), [tx]);
 
-  if (!tx) {
+  if (!tx || !meta) {
     return (
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: "#000" }}
-        edges={["top"]}
-      >
-        <Stack.Screen
-          options={{ title: "Transaction", headerBackTitle: "Home" }}
-        />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
         <View style={{ padding: 18 }}>
           <Text style={{ color: "white", fontWeight: "900" }}>
             Transaction not found.
           </Text>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 14 }}>
+          <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
             <Text style={{ color: "#9DFF3A", fontWeight: "900" }}>Go back</Text>
           </Pressable>
         </View>
@@ -41,57 +33,82 @@ export default function TransactionDetails() {
     );
   }
 
-  const isExpense = tx.type === "expense";
-  const amountColor = isExpense ? "#FF453A" : "#34C759";
-  const sign = isExpense ? "-" : "+";
+  const sign = tx.type === "income" ? "+" : "-";
+  const amountColor = tx.type === "income" ? "#34C759" : "#FF453A";
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
-      <Stack.Screen
-        options={{
-          title: "Transaction",
-          headerBackTitle: "Home",
-        }}
-      />
-
-      <View style={{ flex: 1, padding: 18 }}>
-        <Text style={styles.h1}>Transaction</Text>
-
-        <View style={styles.card}>
-          <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-            <View style={[styles.iconBox, { backgroundColor: meta.color }]}>
-              <Ionicons name={meta.icon as any} size={22} color="#fff" />
+      <View style={{ padding: 18 }}>
+        <View
+          style={{
+            backgroundColor: "#0d0d0d",
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: "#151515",
+            padding: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 18,
+                backgroundColor: meta.color,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name={meta.icon as any} size={20} color="#fff" />
             </View>
+
             <View style={{ flex: 1 }}>
-              <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
-                {tx.category}
-              </Text>
-              <Text style={{ color: "#a8a8a8", fontWeight: "700" }}>
+              <Text
+                style={{ color: "white", fontWeight: "900", fontSize: 18 }}
+                numberOfLines={1}
+              >
                 {tx.title}
               </Text>
+              <Text
+                style={{ color: "#9a9a9a", fontWeight: "800", marginTop: 4 }}
+              >
+                {meta.label}
+              </Text>
             </View>
           </View>
 
-          <View style={{ marginTop: 16 }}>
-            <Text style={styles.muted}>Amount</Text>
-            <Text style={[styles.amount, { color: amountColor }]}>
-              {sign}
-              {formatMoney(tx.amount)}
-            </Text>
-          </View>
+          <View style={{ height: 14 }} />
 
-          <View style={{ marginTop: 14 }}>
-            <Text style={styles.muted}>Type</Text>
-            <Text style={{ color: "white", fontWeight: "900", marginTop: 6 }}>
-              {tx.type.toUpperCase()}
-            </Text>
-          </View>
+          <Text style={{ color: "#bdbdbd", fontWeight: "800" }}>Amount</Text>
+          <Text
+            style={{
+              color: amountColor,
+              fontWeight: "900",
+              fontSize: 26,
+              marginTop: 6,
+            }}
+          >
+            {sign} {formatMoney(tx.amount, currency)}
+          </Text>
 
-          <View style={{ marginTop: 14 }}>
-            <Text style={styles.muted}>Date</Text>
-            <Text style={{ color: "white", fontWeight: "900", marginTop: 6 }}>
-              {new Date(tx.date).toLocaleString()}
-            </Text>
+          <View style={{ height: 14 }} />
+
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <View>
+              <Text style={{ color: "#9a9a9a", fontWeight: "800" }}>Type</Text>
+              <Text style={{ color: "white", fontWeight: "900", marginTop: 4 }}>
+                {tx.type === "income" ? "Income" : "Expense"}
+              </Text>
+            </View>
+
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={{ color: "#9a9a9a", fontWeight: "800" }}>Date</Text>
+              <Text style={{ color: "white", fontWeight: "900", marginTop: 4 }}>
+                {formatShortDate(tx.date)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -102,70 +119,20 @@ export default function TransactionDetails() {
               params: { id: tx.id },
             })
           }
-          style={styles.primaryBtn}
-        >
-          <Text style={styles.primaryText}>Edit</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={async () => {
-            await remove(tx.id);
-            router.replace("/(tabs)");
+          style={{
+            marginTop: 14,
+            paddingVertical: 14,
+            borderRadius: 16,
+            backgroundColor: "#9DFF3A",
           }}
-          style={styles.dangerBtn}
-        >
-          <Text style={styles.dangerText}>Delete</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.back()}
-          style={{ paddingVertical: 14 }}
         >
           <Text
-            style={{ color: "#aaa", textAlign: "center", fontWeight: "800" }}
+            style={{ textAlign: "center", fontWeight: "900", color: "#111" }}
           >
-            Back
+            Edit
           </Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  h1: { color: "white", fontSize: 28, fontWeight: "900", marginBottom: 14 },
-
-  card: {
-    backgroundColor: "#0d0d0d",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-  },
-  iconBox: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  muted: { color: "#a8a8a8", fontWeight: "800" },
-  amount: { fontSize: 34, fontWeight: "900", marginTop: 6 },
-
-  primaryBtn: {
-    backgroundColor: "#9DFF3A",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  primaryText: { color: "#111", fontWeight: "900", fontSize: 16 },
-
-  dangerBtn: {
-    backgroundColor: "#141414",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  dangerText: { color: "#FF453A", fontWeight: "900", fontSize: 16 },
-});
