@@ -27,7 +27,10 @@ import FloatingAddButton from "../../src/components/floatingAddButton";
 import Segmented from "../../src/components/segmented";
 import TransactionItem from "../../src/components/transactionItem";
 
-import { getCategoriesForType } from "../../src/data/categories";
+import {
+  getCategoriesForType,
+  getCategoryMeta,
+} from "../../src/data/categories";
 import { useSettingsStore } from "../../src/store/settingsStore";
 import { useTransactionsStore } from "../../src/store/transactionsStore";
 import { formatMoney, totals } from "../../src/utils/money";
@@ -43,9 +46,13 @@ const ALL_CATS = (() => {
 })();
 
 // Collapsing header sizes
-const HEADER_EXPANDED = 172; // enough for BalanceCard
-const HEADER_COLLAPSED = 56; // compact bar height
+const HEADER_EXPANDED = 330;
+const HEADER_COLLAPSED = 56;
 const COLLAPSE_DISTANCE = HEADER_EXPANDED - HEADER_COLLAPSED;
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
 
 export default function Home() {
   const transactions = useTransactionsStore((s) => s.transactions);
@@ -60,6 +67,7 @@ export default function Home() {
   const clearFilters = useTransactionsStore((s) => s.clearFilters);
 
   const currency = useSettingsStore((s) => s.currency);
+  const limits = useSettingsStore((s) => s.limits);
 
   const openSwipeRef = useRef<any>(null);
 
@@ -118,6 +126,50 @@ export default function Home() {
     filters.category !== "all" ||
     sortKey !== "date" ||
     sortDir !== "desc";
+
+  // ===== Limits logic (monthly expense spend vs limit) =====
+  const monthStart = useMemo(() => startOfMonth(new Date()).getTime(), []);
+
+  const monthExpenseByCategory = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of transactions) {
+      if (tx.type !== "expense") continue;
+      const time = new Date(tx.date).getTime();
+      if (time < monthStart) continue;
+      map.set(tx.category, (map.get(tx.category) ?? 0) + tx.amount);
+    }
+    return map;
+  }, [transactions, monthStart]);
+
+  const limitedCategories = useMemo(() => {
+    const keys = Object.keys(limits ?? {});
+    const valid = keys.filter((k) => {
+      const v = (limits as any)?.[k];
+      if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return false;
+      // limits should be expense/both categories
+      const meta = getCategoryMeta(k);
+      return meta.type !== "income";
+    });
+
+    return valid
+      .map((k) => {
+        const limit = (limits as any)[k] as number;
+        const spent = monthExpenseByCategory.get(k) ?? 0;
+        const ratio = limit > 0 ? spent / limit : 0;
+        const left = limit - spent; // negative means over
+        return { category: k, limit, spent, ratio, left };
+      })
+      .sort((a, b) => {
+        // closest to limit first (including over)
+        if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+        return b.spent - a.spent;
+      });
+  }, [limits, monthExpenseByCategory]);
+
+  const topLimits = limitedCategories.slice(0, 2);
+
+  // Limits popup
+  const [limitsOpen, setLimitsOpen] = useState(false);
 
   // Pinned collapse animation
   const scrollY = useSharedValue(0);
@@ -248,13 +300,14 @@ export default function Home() {
               headerHeightStyle,
             ]}
           >
-            {/* Big card */}
+            {/* Big card stack */}
             <Animated.View
               style={[
                 cardStyle,
                 { position: "absolute", left: 0, right: 0, top: 0 },
               ]}
             >
+              {/* Balance */}
               <Pressable
                 onPress={() => {
                   closeAnyOpenSwipe();
@@ -268,6 +321,159 @@ export default function Home() {
                     expense={t.expense}
                   />
                 </View>
+              </Pressable>
+
+              {/* Limits preview card */}
+              <Pressable
+                onPress={() => {
+                  closeAnyOpenSwipe();
+                  setLimitsOpen(true);
+                }}
+                style={({ pressed }) => ({
+                  backgroundColor: "#0d0d0d",
+                  borderRadius: 18,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: "#151515",
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text
+                    style={{
+                      color: "white",
+                      fontWeight: "900",
+                      fontSize: 16,
+                      flex: 1,
+                    }}
+                  >
+                    Limits
+                  </Text>
+                  <Text style={{ color: "#9DFF3A", fontWeight: "900" }}>
+                    View
+                  </Text>
+                </View>
+
+                {limitedCategories.length === 0 ? (
+                  <Text
+                    style={{ color: "#777", fontWeight: "800", marginTop: 8 }}
+                  >
+                    No limits set. Tap to add limits.
+                  </Text>
+                ) : (
+                  <View style={{ marginTop: 10, gap: 10 }}>
+                    {topLimits.map((row) => {
+                      const meta = getCategoryMeta(row.category);
+                      const pct =
+                        row.limit > 0 ? Math.min(1, row.spent / row.limit) : 0;
+                      const pct100 =
+                        row.limit > 0
+                          ? Math.round((row.spent / row.limit) * 100)
+                          : 0;
+                      const over = row.spent > row.limit;
+
+                      return (
+                        <View
+                          key={row.category}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 14,
+                              backgroundColor: meta.color,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name={meta.icon as any}
+                              size={16}
+                              color="#fff"
+                            />
+                          </View>
+
+                          <View style={{ flex: 1 }}>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: "white",
+                                  fontWeight: "900",
+                                  flex: 1,
+                                }}
+                                numberOfLines={1}
+                              >
+                                {meta.label}
+                              </Text>
+
+                              <Text
+                                style={{
+                                  color: over ? "#FF453A" : "#bbb",
+                                  fontWeight: "900",
+                                }}
+                              >
+                                {over
+                                  ? `Over ${formatMoney(Math.abs(row.left), currency)}`
+                                  : `${formatMoney(row.left, currency)} left`}
+                              </Text>
+                            </View>
+
+                            <View
+                              style={{
+                                marginTop: 6,
+                                height: 7,
+                                borderRadius: 999,
+                                backgroundColor: "#1b1b1b",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <View
+                                style={{
+                                  width: `${Math.round(pct * 100)}%`,
+                                  height: "100%",
+                                  backgroundColor: over ? "#FF453A" : "#9DFF3A",
+                                }}
+                              />
+                            </View>
+
+                            <Text
+                              style={{
+                                color: "#777",
+                                fontWeight: "800",
+                                marginTop: 5,
+                              }}
+                            >
+                              {formatMoney(row.spent, currency)} /{" "}
+                              {formatMoney(row.limit, currency)} • {pct100}%
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+
+                    {limitedCategories.length > 3 && (
+                      <Text
+                        style={{
+                          color: "#777",
+                          fontWeight: "800",
+                          marginTop: 2,
+                        }}
+                      >
+                        +{limitedCategories.length - 3} more
+                      </Text>
+                    )}
+                  </View>
+                )}
               </Pressable>
             </Animated.View>
 
@@ -371,6 +577,221 @@ export default function Home() {
           )}
         />
 
+        {/* Limits popup (bottom sheet) */}
+        <Modal
+          visible={limitsOpen}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setLimitsOpen(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }}>
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={() => setLimitsOpen(false)}
+            />
+
+            <View
+              style={{
+                backgroundColor: "#0b0b0b",
+                padding: 16,
+                borderTopLeftRadius: 22,
+                borderTopRightRadius: 22,
+                borderWidth: 1,
+                borderColor: "#151515",
+                maxHeight: "78%",
+              }}
+            >
+              <View
+                style={{
+                  alignSelf: "center",
+                  width: 48,
+                  height: 5,
+                  borderRadius: 999,
+                  backgroundColor: "#2a2a2a",
+                  marginBottom: 12,
+                }}
+              />
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <Text
+                  style={{ color: "white", fontWeight: "900", fontSize: 16 }}
+                >
+                  Your Limits
+                </Text>
+
+                <Pressable
+                  onPress={() => {
+                    setLimitsOpen(false);
+                    router.push("/limits");
+                  }}
+                  style={{
+                    marginLeft: "auto",
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                  }}
+                >
+                  <Text style={{ color: "#9DFF3A", fontWeight: "900" }}>
+                    Manage
+                  </Text>
+                </Pressable>
+              </View>
+
+              {limitedCategories.length === 0 ? (
+                <View style={{ paddingVertical: 18 }}>
+                  <Text style={{ color: "#bbb", fontWeight: "900" }}>
+                    No limits set.
+                  </Text>
+                  <Text
+                    style={{ color: "#666", fontWeight: "800", marginTop: 6 }}
+                  >
+                    Tap “Manage” to add category limits.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ gap: 12 }}>
+                    {limitedCategories.map((row) => {
+                      const meta = getCategoryMeta(row.category);
+                      const pct =
+                        row.limit > 0 ? Math.min(1, row.spent / row.limit) : 0;
+                      const pct100 =
+                        row.limit > 0
+                          ? Math.round((row.spent / row.limit) * 100)
+                          : 0;
+                      const over = row.spent > row.limit;
+
+                      return (
+                        <View
+                          key={row.category}
+                          style={{
+                            backgroundColor: "#0d0d0d",
+                            borderRadius: 18,
+                            borderWidth: 1,
+                            borderColor: "#151515",
+                            padding: 12,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 12,
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: 46,
+                                height: 46,
+                                borderRadius: 18,
+                                backgroundColor: meta.color,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Ionicons
+                                name={meta.icon as any}
+                                size={20}
+                                color="#fff"
+                              />
+                            </View>
+
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={{
+                                  color: "white",
+                                  fontWeight: "900",
+                                  fontSize: 16,
+                                }}
+                              >
+                                {meta.label}
+                              </Text>
+
+                              <Text
+                                style={{
+                                  color: over ? "#FF453A" : "#bdbdbd",
+                                  fontWeight: "900",
+                                  marginTop: 6,
+                                }}
+                              >
+                                {formatMoney(row.spent, currency)} /{" "}
+                                {formatMoney(row.limit, currency)}
+                                {"  "}
+                                <Text style={{ color: "#777" }}>
+                                  • {pct100}%
+                                </Text>
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View
+                            style={{
+                              marginTop: 10,
+                              height: 8,
+                              borderRadius: 999,
+                              backgroundColor: "#1b1b1b",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: `${Math.round(pct * 100)}%`,
+                                height: "100%",
+                                backgroundColor: over ? "#FF453A" : "#9DFF3A",
+                              }}
+                            />
+                          </View>
+
+                          <Text
+                            style={{
+                              color: over ? "#FF453A" : "#8b8b8b",
+                              fontWeight: "800",
+                              marginTop: 8,
+                            }}
+                          >
+                            {over
+                              ? `Over by ${formatMoney(Math.abs(row.left), currency)}`
+                              : `${formatMoney(row.left, currency)} left`}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <View style={{ height: 14 }} />
+                </ScrollView>
+              )}
+
+              <Pressable
+                onPress={() => setLimitsOpen(false)}
+                style={{
+                  marginTop: 14,
+                  paddingVertical: 14,
+                  borderRadius: 16,
+                  backgroundColor: "#141414",
+                  borderWidth: 1,
+                  borderColor: "#222",
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "900",
+                    color: "#bbb",
+                  }}
+                >
+                  Close
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
         {/* Filters sheet */}
         <Modal
           visible={filtersOpen}
@@ -436,11 +857,7 @@ export default function Home() {
               </View>
 
               <Text
-                style={{
-                  color: "#9a9a9a",
-                  fontWeight: "900",
-                  marginBottom: 8,
-                }}
+                style={{ color: "#9a9a9a", fontWeight: "900", marginBottom: 8 }}
               >
                 Type
               </Text>
@@ -457,11 +874,7 @@ export default function Home() {
               <View style={{ height: 14 }} />
 
               <Text
-                style={{
-                  color: "#9a9a9a",
-                  fontWeight: "900",
-                  marginBottom: 8,
-                }}
+                style={{ color: "#9a9a9a", fontWeight: "900", marginBottom: 8 }}
               >
                 Sort
               </Text>

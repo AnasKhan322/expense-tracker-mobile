@@ -101,6 +101,16 @@ export const CATEGORIES: CategoryMeta[] = [
   },
 ];
 
+export const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);
+
+export const EXPENSE_CATEGORY_KEYS = CATEGORIES.filter(
+  (c) => c.type === "expense" || c.type === "both",
+).map((c) => c.key);
+
+export const INCOME_CATEGORY_KEYS = CATEGORIES.filter(
+  (c) => c.type === "income" || c.type === "both",
+).map((c) => c.key);
+
 export function getCategoriesForType(type: "expense" | "income") {
   return CATEGORIES.filter((c) => c.type === type || c.type === "both");
 }

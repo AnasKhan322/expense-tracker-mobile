@@ -1,3 +1,4 @@
+// app/(tabs)/_layout.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
@@ -6,10 +7,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: "#000",
-          borderTopColor: "#111",
-        },
+        tabBarStyle: { backgroundColor: "#000", borderTopColor: "#111" },
         tabBarActiveTintColor: "#9DFF3A",
         tabBarInactiveTintColor: "#777",
       }}
@@ -19,7 +17,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="home-outline" color={color} size={size} />
           ),
         }}
       />
@@ -29,17 +27,17 @@ export default function TabsLayout() {
         options={{
           title: "Stats",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
+            <Ionicons name="stats-chart-outline" color={color} size={size} />
           ),
         }}
       />
 
       <Tabs.Screen
-        name="profile"
+        name="limits"
         options={{
-          title: "Profile",
+          title: "Limits",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="speedometer-outline" color={color} size={size} />
           ),
         }}
       />
