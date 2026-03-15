@@ -1,4 +1,3 @@
-// app/(tabs)/_layout.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -24,7 +23,7 @@ export default function TabsLayout() {
     [limits],
   );
 
-  // Hydrate stores once
+  // Hydrate stores once (tabs-level)
   useEffect(() => {
     hydrateSettings();
     txHydrate();
@@ -167,7 +166,9 @@ export default function TabsLayout() {
                 onPress={async () => {
                   await acknowledge();
                   setPromptOpen(false);
-                  router.push("/limits");
+
+                  // ✅ IMPORTANT: go to the tabs route explicitly
+                  router.push("/(tabs)/limits");
                 }}
                 style={({ pressed }) => ({
                   flex: 1,

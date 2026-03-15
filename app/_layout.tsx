@@ -17,7 +17,7 @@ function StoreHydrator() {
 
   useEffect(() => {
     if (!hydratedSettings) hydrateSettings();
-  }, [hydratedSettings, hydrateSettings]);
+  }, [hydratedSettings, hydrateSettings]); // ❌ old
 
   return null;
 }
@@ -25,13 +25,9 @@ function StoreHydrator() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StoreHydrator />
+      <FixedHydrator />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="(tabs)"
-          options={{ headerShown: false, title: "Home" }}
-        />
-
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="settings"
           options={{
@@ -71,4 +67,23 @@ export default function RootLayout() {
       </Stack>
     </GestureHandlerRootView>
   );
+}
+
+function FixedHydrator() {
+  const hydrateTx = useTransactionsStore((s) => s.hydrate);
+  const hydratedTx = useTransactionsStore((s) => s.hydrated);
+
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
+  const hydratedSettings = useSettingsStore((s) => s.hydrated);
+
+  useEffect(() => {
+    if (!hydratedTx) hydrateTx();
+  }, [hydratedTx, hydrateTx]);
+
+  // ✅ correct dependencies
+  useEffect(() => {
+    if (!hydratedSettings) hydrateSettings();
+  }, [hydratedSettings, hydrateSettings]); // should be [hydratedSettings, hydrateSettings]
+
+  return null;
 }
