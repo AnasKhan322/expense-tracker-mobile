@@ -43,41 +43,41 @@ A clean, fast, and minimal personal finance app built with React Native (Expo) f
 ## 📸 Screenshots
 
 ### 🏠 Home
-![Home](./screenshots/Home1.png)
-![Home](./screenshots/Home2.png)
-![Home](./screenshots/Home3.png)
+![Home](./screenshots/Home1.jpeg)
+![Home](./screenshots/Home2.jpeg)
+![Home](./screenshots/Home3.jpeg)
 
 ---
 
 ### 🔄 Transactions & Actions
-![Swipe](./screenshots/Swipe.png)
-![Transaction](./screenshots/Transaction1.png)
-![Transaction](./screenshots/Transaction2.png)
+![Swipe](./screenshots/Swipe.jpeg)
+![Transaction](./screenshots/Transaction1.jpeg)
+![Transaction](./screenshots/Transaction2.jpeg)
 
 ---
 
 ### 📊 Stats & Analytics
-![Stats](./screenshots/Stats1.png)
-![Stats](./screenshots/Stats2.png)
-![Stats](./screenshots/Stats3.png)
+![Stats](./screenshots/Stats1.jpeg)
+![Stats](./screenshots/Stats2.jpeg)
+![Stats](./screenshots/Stats3.jpeg)
 
 ---
 
 ### 🎯 Limits & Budgeting
-![Limits](./screenshots/Limits1.png)
-![Limits](./screenshots/Limits2.png)
-![Limits](./screenshots/Limits3.png)
-![Limits](./screenshots/Limits4.png)
+![Limits](./screenshots/Limits1.jpeg)
+![Limits](./screenshots/Limits2.jpeg)
+![Limits](./screenshots/Limits3.jpeg)
+![Limits](./screenshots/Limits4.jpeg)
 
 ---
 
 ### ⚙️ Settings
-![Settings](./screenshots/Settings.png)
+![Settings](./screenshots/Settings.jpeg)
 
 ---
 
 ### 🔍 Filters
-![Filters](./screenshots/Filter1.png)
+![Filters](./screenshots/Filter1.jpeg)
 
 ---
 
