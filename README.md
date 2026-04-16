@@ -1,50 +1,102 @@
-# Welcome to your Expo app 👋
+# 📱 Expense Tracker iOS App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A clean, fast, and minimal personal finance app built with React Native (Expo) focused on budgeting, analytics, and simplicity.
 
-## Get started
+---
 
+## ✨ Features
+
+### 💰 Transactions
+- Add, edit, delete transactions  
+- Swipe actions (edit / delete)  
+- Filter by type and category  
+- Sort by date or amount  
+
+---
+
+### 📊 Stats & Analytics
+- Expense trend charts  
+- Monthly summaries  
+- Category breakdown  
+- Top spending categories  
+- Largest expenses tracking  
+
+---
+
+### 🎯 Limits (Budgeting)
+- Set monthly category limits  
+- Track spending progress  
+- Visual progress bars  
+- Monthly reset system  
+
+---
+
+### ⚡ UX & Design
+- Smooth animations  
+- Collapsing header  
+- Dark theme UI  
+- Bottom sheets & modals  
+- Fast and responsive  
+
+---
+
+## 📸 Screenshots
+
+### 🏠 Home
+![Home](./screenshots/Home1.png)
+![Home](./screenshots/Home2.png)
+![Home](./screenshots/Home3.png)
+
+---
+
+### 🔄 Transactions & Actions
+![Swipe](./screenshots/Swipe.png)
+![Transaction](./screenshots/Transaction1.png)
+![Transaction](./screenshots/Transaction2.png)
+
+---
+
+### 📊 Stats & Analytics
+![Stats](./screenshots/Stats1.png)
+![Stats](./screenshots/Stats2.png)
+![Stats](./screenshots/Stats3.png)
+
+---
+
+### 🎯 Limits & Budgeting
+![Limits](./screenshots/Limits1.png)
+![Limits](./screenshots/Limits2.png)
+![Limits](./screenshots/Limits3.png)
+![Limits](./screenshots/Limits4.png)
+
+---
+
+### ⚙️ Settings
+![Settings](./screenshots/Settings.png)
+
+---
+
+### 🔍 Filters
+![Filters](./screenshots/Filter1.png)
+
+---
+
+## 🛠 Tech Stack
+
+- React Native (Expo)
+- expo-router
+- Zustand
+- AsyncStorage
+- React Native Reanimated
+- Ionicons
+- TypeScript
+
+---
+
+🚀 Getting Started
 1. Install dependencies
-
-   ```bash
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
+2. Run the app
    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+3. Run on device (iphone/android)
+   Install Expo Go and scan the QR code.
