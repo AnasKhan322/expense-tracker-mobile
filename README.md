@@ -107,10 +107,20 @@ A clean, fast, and minimal personal finance app built with React Native (Expo) f
 
 ---
 
-🚀 Getting Started
+## 🚀 Getting Started
+
 1. Install dependencies
-   npm install
+
+```bash
+npm install
+```
+
 2. Run the app
-   npx expo start
-3. Run on device (iphone/android)
-   Install Expo Go and scan the QR code.
+
+```bash
+npx expo start
+```
+
+3. Run on your device (iPhone / Android)
+
+Install **Expo Go** and scan the QR code.
