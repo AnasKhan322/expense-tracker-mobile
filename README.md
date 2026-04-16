@@ -75,7 +75,6 @@ A clean, fast, and minimal personal finance app built with React Native (Expo) f
 <p align="center">
   <img src="./screenshots/Limits1.jpeg" width="200" />
   <img src="./screenshots/Limits2.jpeg" width="200" />
-  <img src="./screenshots/Limits3.jpeg" width="200" />
   <img src="./screenshots/Limits4.jpeg" width="200" />
 </p>
 
